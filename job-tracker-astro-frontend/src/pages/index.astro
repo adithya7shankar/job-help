@@ -1,0 +1,220 @@
+---
+// src/pages/index.astro
+// No server-side JavaScript needed for this basic version yet.
+const pageTitle = "Job Application Tracker";
+---
+
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{pageTitle}</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        form {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        form div {
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="date"],
+        select {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #jobList {
+            list-style-type: none;
+            padding: 0;
+        }
+        #jobList li {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        #jobList li h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .job-details p {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        .job-details strong {
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{pageTitle}</h1>
+
+        <form id="addJobForm">
+            <div>
+                <label for="companyName">Company Name:</label>
+                <input type="text" id="companyName" name="companyName" required />
+            </div>
+            <div>
+                <label for="jobTitle">Job Title:</label>
+                <input type="text" id="jobTitle" name="jobTitle" required />
+            </div>
+            <div>
+                <label for="applicationDate">Application Date:</label>
+                <input type="date" id="applicationDate" name="applicationDate" required />
+            </div>
+            <div>
+                <label for="status">Status:</label>
+                <select id="status" name="status">
+                    <option value="Wishlist/To Apply">Wishlist/To Apply</option>
+                    <option value="Applied">Applied</option>
+                    <option value="Online Assessment">Online Assessment</option>
+                    <option value="HR Screening">HR Screening</option>
+                    <option value="Technical Interview (Round 1)">Technical Interview (Round 1)</option>
+                    <option value="Technical Interview (Round 2+)">Technical Interview (Round 2+)</option>
+                    <option value="Hiring Manager Interview">Hiring Manager Interview</option>
+                    <option value="On-site/Final Interview">On-site/Final Interview</option>
+                    <option value="Offer Extended">Offer Extended</option>
+                    <option value="Offer Accepted">Offer Accepted</option>
+                    <option value="Offer Declined">Offer Declined</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Withdrew Application">Withdrew Application</option>
+                </select>
+            </div>
+            <div>
+                <label for="jobLink">Job Posting Link (optional):</label>
+                <input type="text" id="jobLink" name="jobLink" />
+            </div>
+            <button type="submit">Add Job Application</button>
+        </form>
+
+        <h2>Current Applications</h2>
+        <ul id="jobList">
+            <!-- Job applications will be listed here by JavaScript -->
+        </ul>
+    </div>
+
+    <script>
+        // Client-side JavaScript
+        const jobForm = document.getElementById('addJobForm');
+        const jobListUl = document.getElementById('jobList');
+        let applications = []; // In-memory store
+
+        // Function to render applications to the list
+        function renderApplications() {
+            jobListUl.innerHTML = ''; // Clear existing list
+            if (applications.length === 0) {
+                jobListUl.innerHTML = '<li>No applications tracked yet.</li>';
+                return;
+            }
+            applications.forEach((app, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <h3>${app.jobTitle}</h3>
+                    <div class="job-details">
+                        <p><strong>Company:</strong> ${app.companyName}</p>
+                        <p><strong>Date Applied:</strong> ${app.applicationDate}</p>
+                        <p><strong>Status:</strong> ${app.status}</p>
+                        <p><strong>Link:</strong> ${app.jobLink ? `<a href="${app.jobLink}" target="_blank">${app.jobLink}</a>` : 'N/A'}</p>
+                        <button onclick="deleteApplication(${index})">Delete</button>
+                         <button onclick="editApplicationPrompt(${index})">Edit Status</button>
+                    </div>
+                `;
+                jobListUl.appendChild(li);
+            });
+        }
+
+        // Handle form submission
+        jobForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const newApp = {
+                companyName: event.target.companyName.value,
+                jobTitle: event.target.jobTitle.value,
+                applicationDate: event.target.applicationDate.value,
+                status: event.target.status.value,
+                jobLink: event.target.jobLink.value,
+            };
+            applications.push(newApp);
+            renderApplications();
+            jobForm.reset();
+        });
+
+        // Function to delete an application
+        window.deleteApplication = function(index) {
+            applications.splice(index, 1);
+            renderApplications();
+        }
+        
+        // Function to prompt for editing application status
+        window.editApplicationPrompt = function(index) {
+            const app = applications[index];
+            if (!app) return;
+
+            const promptMessage = "Enter new status for \"" + app.jobTitle + "\" at \"" + app.companyName + "\":\nAvailable: " + getStatuses().join(", ");
+            const newStatus = prompt(promptMessage, app.status);
+            
+            if (newStatus && getStatuses().includes(newStatus)) {
+                app.status = newStatus;
+                // In a real app, you'd also update a last_activity_date here
+                renderApplications();
+            } else if (newStatus !== null) { // If user entered something but it's invalid
+                alert("Invalid status entered.");
+            }
+        }
+
+        function getStatuses() {
+             return [
+                "Wishlist/To Apply", "Applied", "Online Assessment", "HR Screening",
+                "Technical Interview (Round 1)", "Technical Interview (Round 2+)",
+                "Hiring Manager Interview", "On-site/Final Interview", "Offer Extended",
+                "Offer Accepted", "Offer Declined", "Rejected", "Withdrew Application"
+            ];
+        }
+
+        // Initial render
+        renderApplications();
+    </script>
+</body>
+</html>
