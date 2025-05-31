@@ -1,96 +1,22 @@
 ---
 // src/pages/index.astro
-// No server-side JavaScript needed for this basic version yet.
+import MainLayout from '../layouts/MainLayout.astro';
+
 const pageTitle = "Job Application Tracker";
 ---
 
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>{pageTitle}</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            margin: 20px;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-        .container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        form {
-            margin-bottom: 30px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-        form div {
-            margin-bottom: 10px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input[type="text"],
-        input[type="date"],
-        select {
-            width: calc(100% - 22px);
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #jobList {
-            list-style-type: none;
-            padding: 0;
-        }
-        #jobList li {
-            background-color: #fff;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        #jobList li h3 {
-            margin-top: 0;
-            color: #007bff;
-        }
-        .job-details p {
-            margin: 5px 0;
-            font-size: 0.9em;
-        }
-        .job-details strong {
-            color: #555;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
+<MainLayout title={pageTitle}>
+    <div class="container"> {/* This container is for the page-specific content area */}
         <h1>{pageTitle}</h1>
+
+        <div id="emailParserSection" style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; background-color: #e9ecef;">
+            <h2>Parse Email to Pre-fill Form</h2>
+            <div>
+                <label for="emailText">Paste Email Content Here:</label>
+                <textarea id="emailText" rows="8" style="width: 100%; box-sizing: border-box; font-family: inherit; font-size: 0.95em;"></textarea>
+            </div>
+            <button type="button" id="parseEmailButton" style="margin-top: 10px;">Parse Email & Pre-fill Form</button>
+        </div>
 
         <form id="addJobForm">
             <div>
@@ -138,6 +64,9 @@ const pageTitle = "Job Application Tracker";
 
     <script>
         // Client-side JavaScript
+        const emailParserSection = document.getElementById('emailParserSection');
+        const emailTextInput = document.getElementById('emailText');
+        const parseEmailButton = document.getElementById('parseEmailButton');
         const jobForm = document.getElementById('addJobForm');
         const jobListUl = document.getElementById('jobList');
         let applications = []; // In-memory store
@@ -146,20 +75,22 @@ const pageTitle = "Job Application Tracker";
         function renderApplications() {
             jobListUl.innerHTML = ''; // Clear existing list
             if (applications.length === 0) {
-                jobListUl.innerHTML = '<li>No applications tracked yet.</li>';
+                jobListUl.innerHTML = '<li class="no-data">No applications tracked yet.</li>'; // Added class for styling
                 return;
             }
             applications.forEach((app, index) => {
                 const li = document.createElement('li');
+                // Using classes from global.css for job item structure
+                li.className = 'job-item'; 
                 li.innerHTML = `
                     <h3>${app.jobTitle}</h3>
-                    <div class="job-details">
-                        <p><strong>Company:</strong> ${app.companyName}</p>
-                        <p><strong>Date Applied:</strong> ${app.applicationDate}</p>
-                        <p><strong>Status:</strong> ${app.status}</p>
-                        <p><strong>Link:</strong> ${app.jobLink ? `<a href="${app.jobLink}" target="_blank">${app.jobLink}</a>` : 'N/A'}</p>
+                    <p class="company"><strong>Company:</strong> ${app.companyName}</p>
+                    <p><strong>Date Applied:</strong> ${app.applicationDate}</p>
+                    <p><strong>Status:</strong> ${app.status}</p>
+                    <p><strong>Link:</strong> ${app.jobLink ? `<a href="${app.jobLink}" target="_blank">${app.jobLink}</a>` : 'N/A'}</p>
+                    <div style="margin-top: 10px;">
+                        <button onclick="editApplicationPrompt(${index})" style="margin-right: 5px;">Edit Status</button>
                         <button onclick="deleteApplication(${index})">Delete</button>
-                         <button onclick="editApplicationPrompt(${index})">Edit Status</button>
                     </div>
                 `;
                 jobListUl.appendChild(li);
@@ -197,9 +128,8 @@ const pageTitle = "Job Application Tracker";
             
             if (newStatus && getStatuses().includes(newStatus)) {
                 app.status = newStatus;
-                // In a real app, you'd also update a last_activity_date here
                 renderApplications();
-            } else if (newStatus !== null) { // If user entered something but it's invalid
+            } else if (newStatus !== null) {
                 alert("Invalid status entered.");
             }
         }
@@ -213,8 +143,53 @@ const pageTitle = "Job Application Tracker";
             ];
         }
 
+        // Email Parsing Logic
+        parseEmailButton.addEventListener('click', function() {
+            const emailContent = emailTextInput.value;
+            if (!emailContent.trim()) {
+                alert("Please paste some email content.");
+                return;
+            }
+
+            let companyName = "";
+            let jobTitle = "";
+            let status = "Applied"; // Default for application confirmations
+
+            // Attempt to parse Company Name
+            // Example: "at [CompanyName]." or "Team [CompanyName]"
+            let companyMatch = emailContent.match(/at\s+([A-Za-z0-9\s]+)\./i);
+            if (companyMatch && companyMatch[1]) {
+                companyName = companyMatch[1].trim();
+                // Further refinement if company name is followed by "Talent Acquisition" or similar
+                const talentAcqMatch = companyName.match(/(.*)\s+Talent Acquisition/i);
+                if (talentAcqMatch && talentAcqMatch[1]) {
+                    companyName = talentAcqMatch[1].trim();
+                }
+            } else {
+                companyMatch = emailContent.match(/Team\s+([A-Za-z0-9\s]+)/i);
+                if (companyMatch && companyMatch[1]) {
+                    companyName = companyMatch[1].trim();
+                }
+            }
+            
+            // Attempt to parse Job Title
+            // Example: "the [Job Title] position"
+            const jobTitleMatch = emailContent.match(/the\s+(.+?)\s+position/i);
+            if (jobTitleMatch && jobTitleMatch[1]) {
+                jobTitle = jobTitleMatch[1].trim();
+            }
+
+            // Pre-fill the form
+            jobForm.companyName.value = companyName;
+            jobForm.jobTitle.value = jobTitle;
+            jobForm.status.value = status; // Set default status
+
+            // Optionally, clear the textarea
+            // emailTextInput.value = ""; 
+            alert("Form pre-filled based on email text. Please review and add application date.");
+        });
+
         // Initial render
         renderApplications();
     </script>
-</body>
-</html>
+</MainLayout>

@@ -1,0 +1,52 @@
+---
+// src/pages/job-board.astro
+import MainLayout from '../layouts/MainLayout.astro';
+import fs from 'fs';
+import path from 'path';
+
+const pageTitle = "Curated Job Board";
+let jobs = [];
+let errorMessage = "";
+
+try {
+    const jsonFilePath = path.join(process.cwd(), 'src/data/curated_jobs.json');
+    if (fs.existsSync(jsonFilePath)) {
+        const fileContent = fs.readFileSync(jsonFilePath, 'utf-8');
+        jobs = JSON.parse(fileContent);
+        if (!Array.isArray(jobs)) { // Basic validation
+            console.error("curated_jobs.json does not contain a valid JSON array.");
+            jobs = [];
+            errorMessage = "Error: Data in curated_jobs.json is not a valid list.";
+        }
+    } else {
+        console.warn(`JSON file not found at: ${jsonFilePath}`);
+        errorMessage = `Error: curated_jobs.json not found at ${jsonFilePath}. Please create it in the src/data/ directory.`;
+    }
+} catch (error) {
+    console.error("Error reading or parsing curated_jobs.json:", error);
+    errorMessage = "Error reading or parsing curated_jobs.json. Check console for details.";
+}
+---
+
+<MainLayout title={pageTitle}>
+    <div class="container"> {/* This container is for the page-specific content area */}
+        <h1>{pageTitle}</h1>
+        {errorMessage ? (
+            <p class="no-data">{errorMessage}</p>
+        ) : jobs.length > 0 ? (
+            <ul class="job-list"> {/* This class is now defined in global.css */}
+                {jobs.map(job => (
+                    <li class="job-item"> {/* This class is now defined in global.css */}
+                        <h3><a href={job.url} target="_blank" rel="noopener noreferrer">{job.title || "Untitled Job"}</a></h3>
+                        <p class="company">{job.company || "Unknown Company"}</p>
+                        {job.location && <p class="location">{job.location}</p>}
+                        {job.description && <p class="description">{job.description}</p>}
+                        {job.datePosted && <p class="date-posted">Posted: {job.datePosted}</p>}
+                    </li>
+                ))}
+            </ul>
+        ) : (
+            <p class="no-data">No jobs found in curated_jobs.json. You can add jobs by editing this file in the src/data/ directory.</p>
+        )}
+    </div>
+</MainLayout>

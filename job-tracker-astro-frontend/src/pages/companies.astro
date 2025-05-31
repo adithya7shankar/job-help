@@ -1,0 +1,68 @@
+---
+// src/pages/companies.astro
+import MainLayout from '../layouts/MainLayout.astro';
+import fs from 'fs';
+import path from 'path';
+
+const pageTitle = "Company Career Pages List";
+let companiesData = [];
+
+try {
+    const csvFilePath = path.join(process.cwd(), '../company_career_urls_output.csv'); 
+
+    if (fs.existsSync(csvFilePath)) {
+        const fileContent = fs.readFileSync(csvFilePath, 'utf-8');
+        const lines = fileContent.trim().split('\n');
+        if (lines.length > 1) {
+            // const headers = lines[0].split(',').map(h => h.trim()); // Not strictly needed if we assume column order
+            companiesData = lines.slice(1).map(line => {
+                // Basic CSV parsing: split by comma, handle potential commas within quoted fields simply by joining remaining parts for URL
+                const parts = line.split(',');
+                const company = parts[0] ? parts[0].trim() : 'N/A';
+                const url = parts.slice(1).join(',').trim(); // Join remaining parts for URL, handles simple cases
+                return { name: company, url: url };
+            });
+        }
+    } else {
+        console.warn(`CSV file not found at: ${csvFilePath}`);
+        companiesData = [{name: `Error: company_career_urls_output.csv not found at ${csvFilePath}`, url: ""}];
+    }
+} catch (error) {
+    console.error("Error reading or parsing CSV file:", error);
+    companiesData = [{name: "Error reading or parsing CSV file.", url: ""}];
+}
+---
+
+<MainLayout title={pageTitle}>
+    <div class="container"> {/* This container is for the page-specific content area */}
+        <h1>{pageTitle}</h1>
+        {companiesData.length > 0 && companiesData[0].name.startsWith("Error:") ? (
+            <p class="no-data">{companiesData[0].name}</p>
+        ) : companiesData.length > 0 ? (
+            <table>
+                <thead>
+                    <tr>
+                        <th>Company</th>
+                        <th>Career Page URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {companiesData.map(company => (
+                        <tr>
+                            <td>{company.name}</td>
+                            <td>
+                                {company.url && company.url !== 'N/A' ? (
+                                    <a href={company.url} target="_blank" rel="noopener noreferrer">{company.url}</a>
+                                ) : (
+                                    <span class="no-url">URL not yet found</span>
+                                )}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        ) : (
+            <p class="no-data">No company data found or CSV could not be loaded.</p>
+        )}
+    </div>
+</MainLayout>

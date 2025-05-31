@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Senior Software Engineer, Backend",
+    "company": "Innovatech Solutions",
+    "url": "https://example.com/jobs/sse-backend-123",
+    "location": "Remote (US)",
+    "datePosted": "2025-05-28",
+    "description": "Seeking an experienced backend engineer to build scalable microservices."
+  },
+  {
+    "title": "Machine Learning Intern (Fall 2025)",
+    "company": "AI Forward Inc.",
+    "url": "https://example.com/jobs/ml-intern-fall2025",
+    "location": "New York, NY",
+    "datePosted": "2025-05-25",
+    "description": "Exciting internship opportunity for students passionate about ML and NLP."
+  },
+  {
+    "title": "Frontend Developer (React)",
+    "company": "WebWorks Co.",
+    "url": "https://example.com/jobs/frontend-react-dev",
+    "location": "San Francisco, CA (Hybrid)",
+    "datePosted": "2025-05-20",
+    "description": "Join our team to build beautiful and responsive user interfaces with React."
+  }
+]

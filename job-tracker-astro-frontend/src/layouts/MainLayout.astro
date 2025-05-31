@@ -1,0 +1,66 @@
+---
+// src/layouts/MainLayout.astro
+import '../styles/global.css'; // Import global styles
+
+// Props that can be passed to the layout, e.g., page title
+export interface Props {
+    title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title} | Job Application Tracker</title>
+</head>
+<body>
+    <div class="app-container"> {/* Changed from .container to avoid conflict if a page also uses .container for its main content area */}
+        <header>
+            <nav>
+                <a href="/">Tracker</a>
+                <a href="/companies/">Companies List</a>
+                <a href="/job-board/">Curated Job Board</a>
+            </nav>
+        </header>
+        <main class="main-content">
+            <slot /> {/* Page content will be injected here */}
+        </main>
+        <footer style="text-align: center; margin-top: 30px; padding: 15px; border-top: 1px solid var(--border-color); font-size: 0.9em; color: var(--secondary-color);">
+            <p>&copy; {new Date().getFullYear()} Job Application Tracker. Built with Astro.</p>
+        </footer>
+    </div>
+    <style>
+        /* Styles specific to the layout, if any, can go here or in global.css */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Ensure footer is at bottom */
+        }
+        header {
+            /* Styles for header, if needed, beyond nav */
+            width: 100%;
+            background-color: var(--card-background); /* Match nav or make distinct */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .main-content {
+            flex-grow: 1; /* Allows main content to expand and push footer down */
+            padding: 20px; /* Add some padding around the content from pages */
+            max-width: 1100px; /* Consistent with .container in global.css */
+            width: 100%;
+            margin: 0 auto; /* Center the main content area */
+            box-sizing: border-box;
+        }
+        /* Ensure nav within header doesn't double up on margins/borders if global.css nav is very specific */
+        header nav {
+            border-bottom: none; /* Remove border if header has its own shadow/border */
+            margin-bottom: 0;
+            padding: 15px 0; /* Adjust padding for header nav */
+        }
+    </style>
+</body>
+</html>
