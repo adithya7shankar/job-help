@@ -63,73 +63,135 @@ const pageTitle = "Job Application Tracker";
     </div>
 
     <script>
-        // Client-side JavaScript
         const emailParserSection = document.getElementById('emailParserSection');
         const emailTextInput = document.getElementById('emailText');
         const parseEmailButton = document.getElementById('parseEmailButton');
         const jobForm = document.getElementById('addJobForm');
         const jobListUl = document.getElementById('jobList');
-        let applications = []; // In-memory store
+        
+        // Store applications data globally on the client-side for simplicity in this example
+        // In a more complex app, you might use a state management solution or pass data around more explicitly.
+        let currentApplications = [];
 
-        // Function to render applications to the list
+        async function fetchApplications() {
+            try {
+                const response = await fetch('/api/applications');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                currentApplications = await response.json();
+                renderApplications();
+            } catch (error) {
+                console.error("Failed to fetch applications:", error);
+                jobListUl.innerHTML = '<li class="no-data">Error loading applications. Check console.</li>';
+            }
+        }
+
         function renderApplications() {
-            jobListUl.innerHTML = ''; // Clear existing list
-            if (applications.length === 0) {
-                jobListUl.innerHTML = '<li class="no-data">No applications tracked yet.</li>'; // Added class for styling
+            jobListUl.innerHTML = ''; 
+            if (currentApplications.length === 0) {
+                jobListUl.innerHTML = '<li class="no-data">No applications tracked yet.</li>';
                 return;
             }
-            applications.forEach((app, index) => {
+            currentApplications.forEach(app => { // No index needed if using app.id
                 const li = document.createElement('li');
-                // Using classes from global.css for job item structure
-                li.className = 'job-item'; 
+                li.className = 'job-item';
+                li.dataset.id = app.id; // Store id for updates/deletes
                 li.innerHTML = `
-                    <h3>${app.jobTitle}</h3>
-                    <p class="company"><strong>Company:</strong> ${app.companyName}</p>
-                    <p><strong>Date Applied:</strong> ${app.applicationDate}</p>
+                    <h3>${app.job_title}</h3>
+                    <p class="company"><strong>Company:</strong> ${app.company_name}</p>
+                    <p><strong>Date Applied:</strong> ${app.application_date || 'N/A'}</p>
                     <p><strong>Status:</strong> ${app.status}</p>
-                    <p><strong>Link:</strong> ${app.jobLink ? `<a href="${app.jobLink}" target="_blank">${app.jobLink}</a>` : 'N/A'}</p>
+                    <p><strong>Link:</strong> ${app.job_link ? `<a href="${app.job_link}" target="_blank" rel="noopener noreferrer">${app.job_link}</a>` : 'N/A'}</p>
+                    <p><strong>Notes:</strong> ${app.notes || ''}</p>
                     <div style="margin-top: 10px;">
-                        <button onclick="editApplicationPrompt(${index})" style="margin-right: 5px;">Edit Status</button>
-                        <button onclick="deleteApplication(${index})">Delete</button>
+                        <button onclick="editApplicationPrompt(${app.id})" style="margin-right: 5px;">Edit Status</button>
+                        <button onclick="deleteApplication(${app.id})">Delete</button>
                     </div>
                 `;
                 jobListUl.appendChild(li);
             });
         }
 
-        // Handle form submission
-        jobForm.addEventListener('submit', function(event) {
+        jobForm.addEventListener('submit', async function(event) {
             event.preventDefault();
-            const newApp = {
-                companyName: event.target.companyName.value,
-                jobTitle: event.target.jobTitle.value,
-                applicationDate: event.target.applicationDate.value,
+            const newAppPayload = {
+                company_name: event.target.companyName.value,
+                job_title: event.target.jobTitle.value,
+                application_date: event.target.applicationDate.value,
                 status: event.target.status.value,
-                jobLink: event.target.jobLink.value,
+                job_link: event.target.jobLink.value,
+                notes: "" // Add a notes field to the form later if desired
             };
-            applications.push(newApp);
-            renderApplications();
-            jobForm.reset();
+
+            try {
+                const response = await fetch('/api/applications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newAppPayload)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                // const addedApp = await response.json(); // The API returns the created app
+                // currentApplications.push(addedApp); // Or just refetch all for simplicity
+                await fetchApplications(); // Refetch all to ensure list is up-to-date
+                jobForm.reset();
+            } catch (error) {
+                console.error("Failed to add application:", error);
+                alert(`Error adding application: ${error.message}`);
+            }
         });
 
-        // Function to delete an application
-        window.deleteApplication = function(index) {
-            applications.splice(index, 1);
-            renderApplications();
+        window.deleteApplication = async function(id) {
+            if (!confirm("Are you sure you want to delete this application?")) return;
+            try {
+                const response = await fetch(`/api/applications/${id}`, { method: 'DELETE' });
+                if (!response.ok && response.status !== 204) { // 204 No Content is a success
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                // currentApplications = currentApplications.filter(app => app.id !== id);
+                // renderApplications();
+                await fetchApplications(); // Refetch for simplicity
+            } catch (error) {
+                console.error("Failed to delete application:", error);
+                alert(`Error deleting application: ${error.message}`);
+            }
         }
         
-        // Function to prompt for editing application status
-        window.editApplicationPrompt = function(index) {
-            const app = applications[index];
-            if (!app) return;
+        window.editApplicationPrompt = async function(id) {
+            const appToEdit = currentApplications.find(app => app.id === id);
+            if (!appToEdit) {
+                alert("Application not found for editing.");
+                return;
+            }
 
-            const promptMessage = "Enter new status for \"" + app.jobTitle + "\" at \"" + app.companyName + "\":\nAvailable: " + getStatuses().join(", ");
-            const newStatus = prompt(promptMessage, app.status);
+            const promptMessage = "Enter new status for \"" + appToEdit.job_title + "\" at \"" + appToEdit.company_name + "\":\nAvailable: " + getStatuses().join(", ");
+            const newStatus = prompt(promptMessage, appToEdit.status);
             
-            if (newStatus && getStatuses().includes(newStatus)) {
-                app.status = newStatus;
-                renderApplications();
-            } else if (newStatus !== null) {
+            if (newStatus && getStatuses().includes(newStatus) && newStatus !== appToEdit.status) {
+                try {
+                    const response = await fetch(`/api/applications/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus }) // Only send the status to update
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                    }
+                    // const updatedApp = await response.json();
+                    // const appIndex = currentApplications.findIndex(app => app.id === id);
+                    // if (appIndex !== -1) currentApplications[appIndex] = updatedApp;
+                    // renderApplications();
+                    await fetchApplications(); // Refetch for simplicity
+                } catch (error) {
+                    console.error("Failed to update status:", error);
+                    alert(`Error updating status: ${error.message}`);
+                }
+            } else if (newStatus !== null && !getStatuses().includes(newStatus)) {
                 alert("Invalid status entered.");
             }
         }
@@ -143,53 +205,38 @@ const pageTitle = "Job Application Tracker";
             ];
         }
 
-        // Email Parsing Logic
         parseEmailButton.addEventListener('click', function() {
             const emailContent = emailTextInput.value;
             if (!emailContent.trim()) {
                 alert("Please paste some email content.");
                 return;
             }
-
             let companyName = "";
             let jobTitle = "";
-            let status = "Applied"; // Default for application confirmations
+            let status = "Applied"; 
 
-            // Attempt to parse Company Name
-            // Example: "at [CompanyName]." or "Team [CompanyName]"
-            let companyMatch = emailContent.match(/at\s+([A-Za-z0-9\s]+)\./i);
+            let companyMatch = emailContent.match(/at\s+([A-Za-z0-9\s.,'-]+?)(?:\s+Talent Acquisition|\s+Careers|\.|\n|,)/i);
             if (companyMatch && companyMatch[1]) {
-                companyName = companyMatch[1].trim();
-                // Further refinement if company name is followed by "Talent Acquisition" or similar
-                const talentAcqMatch = companyName.match(/(.*)\s+Talent Acquisition/i);
-                if (talentAcqMatch && talentAcqMatch[1]) {
-                    companyName = talentAcqMatch[1].trim();
-                }
+                companyName = companyMatch[1].replace(/\.$/, '').trim(); // Remove trailing dot if captured
             } else {
-                companyMatch = emailContent.match(/Team\s+([A-Za-z0-9\s]+)/i);
+                companyMatch = emailContent.match(/Team\s+([A-Za-z0-9\s.,'-]+)/i);
                 if (companyMatch && companyMatch[1]) {
                     companyName = companyMatch[1].trim();
                 }
             }
             
-            // Attempt to parse Job Title
-            // Example: "the [Job Title] position"
-            const jobTitleMatch = emailContent.match(/the\s+(.+?)\s+position/i);
+            const jobTitleMatch = emailContent.match(/(?:for|apply for|applying for|application for)\s+(?:the\s+)?(.+?)\s+position/i);
             if (jobTitleMatch && jobTitleMatch[1]) {
                 jobTitle = jobTitleMatch[1].trim();
             }
 
-            // Pre-fill the form
             jobForm.companyName.value = companyName;
             jobForm.jobTitle.value = jobTitle;
-            jobForm.status.value = status; // Set default status
-
-            // Optionally, clear the textarea
-            // emailTextInput.value = ""; 
-            alert("Form pre-filled based on email text. Please review and add application date.");
+            jobForm.status.value = status; 
+            alert("Form pre-filled based on email text. Please review, add application date, and any other details.");
         });
 
-        // Initial render
-        renderApplications();
+        // Initial fetch of applications when the page loads
+        document.addEventListener('DOMContentLoaded', fetchApplications);
     </script>
 </MainLayout>
